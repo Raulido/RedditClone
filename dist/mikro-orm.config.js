@@ -6,12 +6,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const constants_1 = require("./constants");
 const post_1 = require("./entities/post");
 const path_1 = __importDefault(require("path"));
+const user_1 = require("./entities/user");
 exports.default = {
     migrations: {
         path: path_1.default.join(__dirname, "./migrations"),
         glob: '!(*.d).{js,ts}'
     },
-    entities: [post_1.Post],
+    entities: [post_1.Post, user_1.User],
     user: 'raul',
     password: 'raulido',
     dbName: 'RedditClone',
