@@ -9,6 +9,13 @@ import { buildSchema } from "type-graphql";
 import { HelloResolver } from "./resolvers/hello";
 import { PostResolver } from "./resolvers/post";
 import { UserResolver } from "./resolvers/user";
+import {createClient} from "redis";
+import session from "express-session";
+import connectRedis from 'connect-redis';
+import { MyContext } from "./types";
+
+
+
 
 const main = async () => {
     const orm = await MikroORM.init(mikroConfig);
@@ -23,18 +30,43 @@ const main = async () => {
     
     const app = express();
 
+    const RedisStore = connectRedis(session);
+    const redisClient = createClient({ legacyMode: true });
+    redisClient.connect().catch(console.error)
+    app.set("trust proxy", !__prod__)
+    app.use(
+        session({
+            name: 'raul',
+            store: new RedisStore({ 
+                client: redisClient as any,
+                disableTouch: true
+            }),
+            cookie: {
+                maxAge: 1000 * 60 * 60 * 24 * 365 * 10, //10 years
+                httpOnly: true,
+                secure: true,
+                sameSite: 'none',
+            },
+            saveUninitialized: false,
+            secret: "asdp0fimasdv",
+            resave: false,
+        })
+    )
+
     const apolloServer = new ApolloServer({
         schema: await buildSchema({
             resolvers: [HelloResolver, PostResolver, UserResolver],
-            validate: false
+            validate: false,
         }),
-        context: () => ({em})
+        context: ({req,res}: MyContext): MyContext => ({em, req, res})
     });
     // app.get('/', (_,res) => { 
     //     res.send("hello");
     // });
     await apolloServer.start();
-    apolloServer.applyMiddleware({app});
+    const corsOptions = {origin: 'https://studio.apollographql.com', credentials: true}
+    // app.set("trust proxy", !process.env.NODE_ENV === "production");
+    apolloServer.applyMiddleware({app,cors: corsOptions});
     app.listen(4000, () => { 
         console.log('server started on localhost:4000')
     });

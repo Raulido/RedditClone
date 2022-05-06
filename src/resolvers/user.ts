@@ -1,6 +1,6 @@
 import { User } from "../entities/user";
 import { MyContext } from "src/types";
-import { Arg, Ctx, Field, InputType, Mutation, ObjectType, Resolver } from "type-graphql";
+import { Arg, Ctx, Field, InputType, Mutation, ObjectType, Query, Resolver } from "type-graphql";
 import argon2 from 'argon2';
 
 @InputType()
@@ -28,81 +28,99 @@ class UserResponse {
 
 @Resolver()
 export class UserResolver {
+
+    @Query(() => User, {nullable: true})
+    async me(
+        @Ctx() {req, em}: MyContext
+    ){
+        if (!req.session.userId){
+            return null;
+        }
+        const user = await em.findOne(User, {id: req.session.userId});
+        return user;
+    }
+
     @Mutation(() => UserResponse)
     async register(
         @Arg('options') options: UsernamePasswordInput,
-        @Ctx() {em}: MyContext
+        @Ctx() {em, req}: MyContext
     ):Promise<UserResponse>{
-    if (options.username.length <= 2){
-        return {
-            errors:[{
-                field: 'username',
-                message: 'Length must be greater than 2',
-            },],
-        };
-    }
-    if (options.password.length <= 3){
-        return {
-            errors:[{
-                field: 'password',
-                message: 'Length must be greater than 3',
-            },],
-        };
-    }
-    const hashedPassword = await argon2.hash(options.password)
-    const user = em.create(User, { 
-        username: options.username,
-        password: hashedPassword
-    });
-    try{
-        await em.persistAndFlush(user);
-    }catch(err){
-        if (err.code === '23505'){// || err.detail.includes("already exists")){
-            console.log("message: ", err.message)
-            return{
-                errors: [{
-                    field: "username",
-                    message: "username already taken",
-                },
-            ],
+        if (options.username.length <= 2){
+            return {
+                errors:[{
+                    field: 'username',
+                    message: 'Length must be greater than 2',
+                },],
             };
         }
-    }
-    return {
-        user,
-    };
+        if (options.password.length <= 3){
+            return {
+                errors:[{
+                    field: 'password',
+                    message: 'Length must be greater than 3',
+                },],
+            };
+        }
+        const hashedPassword = await argon2.hash(options.password)
+        const user = em.create(User, { 
+            username: options.username,
+            password: hashedPassword
+        });
+        try{
+            await em.persistAndFlush(user);
+        }catch(err){
+            if (err.code === '23505'){// || err.detail.includes("already exists")){
+                console.log("message: ", err.message)
+                return{
+                    errors: [{
+                        field: "username",
+                        message: "username already taken",
+                    },
+                ],
+                };
+            }
+        }
+        req.session.userId = user.id
+
+        return {
+            user,
+        };
     }
 
     @Mutation(() => UserResponse)
     async login(
         @Arg('options') options: UsernamePasswordInput,
-        @Ctx() {em}: MyContext
+        @Ctx() {em, req}: MyContext
     ):Promise<UserResponse>{
-    const user = await em.findOne(User, {username: options.username})
-    if(!user){
+        const user = await em.findOne(User, {username: options.username})
+        if(!user){
+            return {
+                errors:
+                [{
+                    field: 'usernmae',
+                    message: 'That username does not exist',
+                },
+            ],
+            };
+        }
+        const valid = await argon2.verify(user.password, options.password);
+        if(!valid){
+            return {
+                errors:
+                [{
+                    field: 'password',
+                    message: 'password is incorrect',
+                },
+            ],
+            };
+        }
+
+        req.session.userId = user.id;
+
+
         return {
-            errors:
-            [{
-                field: 'usernmae',
-                message: 'That username does not exist',
-            },
-        ],
+            user,
         };
-    }
-    const valid = await argon2.verify(user.password, options.password);
-    if(!valid){
-        return {
-            errors:
-            [{
-                field: 'password',
-                message: 'password is incorrect',
-            },
-        ],
-        };
-    }
-    return {
-        user,
-    };
     }
 }
 
