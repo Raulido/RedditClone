@@ -1,2 +1,2 @@
-# RedditClone
-Inspiration is from Ben Awad's LiReddit youtube video.
+# RedditClone Server Code
+TypeScript, PostgreSQL, MikroORm, Express, Apollo GraphQl, Redis
