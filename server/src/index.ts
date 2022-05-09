@@ -13,7 +13,11 @@ import {createClient} from "redis";
 import session from "express-session";
 import connectRedis from 'connect-redis';
 import { MyContext } from "./types";
+import cors from 'cors';
 
+// const {
+//     graphqlUploadExpress, // A Koa implementation is also exported.
+// } = require('graphql-upload');
 
 
 
@@ -21,34 +25,32 @@ const main = async () => {
     const orm = await MikroORM.init(mikroConfig);
     await orm.getMigrator().up();
     const em = orm.em.fork();
-    // const post = em.create(Post,{title: 'Hello World'});
-    // await em.persistAndFlush(post);
-    // console.log('------------sql 2--------------')
-    // await em.nativeInsert(Post, {title: 'Hello World2'})
-    // const posts = await em.find(Post, {})
-    // console.log(posts)
-    
+
     const app = express();
 
     const RedisStore = connectRedis(session);
     const redisClient = createClient({ legacyMode: true });
     redisClient.connect().catch(console.error)
+
     app.set("trust proxy", !__prod__)
+    const corsOptions = {origin: ['http://localhost:3000','https://studio.apollographql.com'], credentials: true};
+    app.use(cors(corsOptions))
+
     app.use(
         session({
-            name: 'raul',
+            name: 'rid',
             store: new RedisStore({ 
                 client: redisClient as any,
                 disableTouch: true
             }),
             cookie: {
                 maxAge: 1000 * 60 * 60 * 24 * 365 * 10, //10 years
-                httpOnly: true,
-                secure: true,
-                sameSite: 'none',
+                httpOnly: __prod__,
+                secure: __prod__,
+                sameSite: 'lax',
             },
             saveUninitialized: false,
-            secret: "asdp0fimasdv",
+            secret: "asd5yfertyjimasdv",
             resave: false,
         })
     )
@@ -58,22 +60,16 @@ const main = async () => {
             resolvers: [HelloResolver, PostResolver, UserResolver],
             validate: false,
         }),
-        context: ({req,res}: MyContext): MyContext => ({em, req, res})
+        context: ({req,res}: MyContext): MyContext => ({em, req, res}),
     });
-    // app.get('/', (_,res) => { 
-    //     res.send("hello");
-    // });
+
     await apolloServer.start();
-    const corsOptions = {origin: 'https://studio.apollographql.com', credentials: true}
-    // app.set("trust proxy", !process.env.NODE_ENV === "production");
-    apolloServer.applyMiddleware({app,cors: corsOptions});
+    apolloServer.applyMiddleware ({app ,cors: false});
     app.listen(4000, () => { 
         console.log('server started on localhost:4000')
     });
     
 };
-
 main().catch(err => {
-    //console.log("dirname: ", __dirname)
     console.log(err);
 });

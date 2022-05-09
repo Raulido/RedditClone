@@ -16,6 +16,7 @@ const user_1 = require("./resolvers/user");
 const redis_1 = require("redis");
 const express_session_1 = __importDefault(require("express-session"));
 const connect_redis_1 = __importDefault(require("connect-redis"));
+const cors_1 = __importDefault(require("cors"));
 const main = async () => {
     const orm = await core_1.MikroORM.init(mikro_orm_config_1.default);
     await orm.getMigrator().up();
@@ -25,20 +26,22 @@ const main = async () => {
     const redisClient = (0, redis_1.createClient)({ legacyMode: true });
     redisClient.connect().catch(console.error);
     app.set("trust proxy", !constants_1.__prod__);
+    const corsOptions = { origin: ['http://localhost:3000', 'https://studio.apollographql.com'], credentials: true };
+    app.use((0, cors_1.default)(corsOptions));
     app.use((0, express_session_1.default)({
-        name: 'raul',
+        name: 'rid',
         store: new RedisStore({
             client: redisClient,
             disableTouch: true
         }),
         cookie: {
             maxAge: 1000 * 60 * 60 * 24 * 365 * 10,
-            httpOnly: true,
-            secure: true,
-            sameSite: 'none',
+            httpOnly: constants_1.__prod__,
+            secure: constants_1.__prod__,
+            sameSite: 'lax',
         },
         saveUninitialized: false,
-        secret: "asdp0fimasdv",
+        secret: "asd5yfertyjimasdv",
         resave: false,
     }));
     const apolloServer = new apollo_server_express_1.ApolloServer({
@@ -46,11 +49,10 @@ const main = async () => {
             resolvers: [hello_1.HelloResolver, post_1.PostResolver, user_1.UserResolver],
             validate: false,
         }),
-        context: ({ req, res }) => ({ em, req, res })
+        context: ({ req, res }) => ({ em, req, res }),
     });
     await apolloServer.start();
-    const corsOptions = { origin: 'https://studio.apollographql.com', credentials: true };
-    apolloServer.applyMiddleware({ app, cors: corsOptions });
+    apolloServer.applyMiddleware({ app, cors: false });
     app.listen(4000, () => {
         console.log('server started on localhost:4000');
     });
