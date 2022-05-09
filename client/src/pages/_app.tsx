@@ -1,7 +1,7 @@
 import { ChakraProvider } from '@chakra-ui/react';
 import theme from '../theme';
 import { AppProps } from 'next/app';
-import { Provider, createClient, Client, fetchExchange} from 'urql';
+import { Provider, createClient} from 'urql';
 
 const client = createClient({
   url: 'http://localhost:4000/graphql',

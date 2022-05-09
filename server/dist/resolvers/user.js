@@ -113,7 +113,7 @@ let UserResolver = class UserResolver {
         if (!user) {
             return {
                 errors: [{
-                        field: 'usernmae',
+                        field: 'username',
                         message: 'That username does not exist',
                     },
                 ],
@@ -124,7 +124,7 @@ let UserResolver = class UserResolver {
             return {
                 errors: [{
                         field: 'password',
-                        message: 'password is incorrect',
+                        message: 'Password is incorrect',
                     },
                 ],
             };
