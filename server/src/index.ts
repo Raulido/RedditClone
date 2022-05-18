@@ -15,12 +15,6 @@ import connectRedis from 'connect-redis';
 import { MyContext } from "./types";
 import cors from 'cors';
 
-// const {
-//     graphqlUploadExpress, // A Koa implementation is also exported.
-// } = require('graphql-upload');
-
-
-
 const main = async () => {
     const orm = await MikroORM.init(mikroConfig);
     await orm.getMigrator().up();
