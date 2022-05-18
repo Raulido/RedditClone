@@ -3,7 +3,7 @@ import theme from '../theme';
 import { AppProps } from 'next/app';
 import { Provider, createClient, dedupExchange, fetchExchange} from 'urql';
 import { cacheExchange, Cache, QueryInput } from '@urql/exchange-graphcache';
-import { LoginMutation, MeDocument, MeQuery, RegisterMutation } from '../generated/graphql';
+import { LoginMutation, LogoutMutation, MeDocument, MeQuery, RegisterMutation } from '../generated/graphql';
 
 //Wrapper function for updateQuery so TypeScript doesnt complain
 function betterUpdateQuery<Result, Query>(
@@ -25,6 +25,15 @@ const client = createClient({
     //This fixes the issue of login and NavBar not changing.
     updates: {
       Mutation: {
+        logout: (_result, args, cache, info) => {
+          // me query should return null
+          betterUpdateQuery<LogoutMutation, MeQuery>(
+            cache,
+            {query: MeDocument},
+            _result,
+            () => ({me: null})
+          )
+        },
         login : (_result, args, cache, info) => {
           betterUpdateQuery<LoginMutation, MeQuery>(
             cache,
