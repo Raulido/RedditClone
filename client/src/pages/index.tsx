@@ -1,4 +1,3 @@
-import { useAccordion } from "@chakra-ui/react";
 import { withUrqlClient } from "next-urql"
 import { NavBar } from "../components/navBar"
 import { createUrqlClient } from "../utils/createUrqlClient";

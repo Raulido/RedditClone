@@ -14,9 +14,13 @@ import session from "express-session";
 import connectRedis from 'connect-redis';
 import { MyContext } from "./types";
 import cors from 'cors';
+import { sendEmail } from "./utils/sendEmail";
+import { User } from "./entities/user";
 
 const main = async () => {
+    // sendEmail('raul@raul.com',"Yo")
     const orm = await MikroORM.init(mikroConfig);
+    // orm.em.nativeDelete(User, {})
     await orm.getMigrator().up();
     const em = orm.em.fork();
 
@@ -67,3 +71,4 @@ const main = async () => {
 main().catch(err => {
     console.log(err);
 });
+
