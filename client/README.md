@@ -1,2 +1,2 @@
 # RedditClone Client Code
-TypeScript, React, Chakra, URQL
+NextJS, TypeScript, React, Chakra, URQL
