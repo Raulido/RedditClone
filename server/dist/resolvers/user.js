@@ -22,6 +22,8 @@ const argon2_1 = __importDefault(require("argon2"));
 const constants_1 = require("../constants");
 const UsernamePasswordInput_1 = require("./UsernamePasswordInput");
 const validateRegister_1 = require("../utils/validateRegister");
+const sendEmail_1 = require("../utils/sendEmail");
+const uuid_1 = require("uuid");
 let FieldError = class FieldError {
 };
 __decorate([
@@ -49,7 +51,48 @@ UserResponse = __decorate([
     (0, type_graphql_1.ObjectType)()
 ], UserResponse);
 let UserResolver = class UserResolver {
-    async forgotPassword(email, { req }) {
+    async changePassword(token, newPassword, { redis, em, req }) {
+        if (newPassword.length <= 3) {
+            return { errors: [
+                    {
+                        field: 'newPassword',
+                        message: 'Length must be greater than 3',
+                    },
+                ] };
+        }
+        const key = constants_1.FORGOT_PASSWORD_PREFIX + token;
+        const userId = await redis.get(key);
+        if (!userId) {
+            return { errors: [
+                    {
+                        field: 'token',
+                        message: 'token expired',
+                    },
+                ] };
+        }
+        const user = await em.findOne(user_1.User, { id: parseInt(userId) });
+        if (!user) {
+            return { errors: [
+                    {
+                        field: 'token',
+                        message: 'user no longer exists',
+                    },
+                ] };
+        }
+        user.password = await argon2_1.default.hash(newPassword);
+        em.persistAndFlush(user);
+        redis.del(key);
+        req.session.userId = user.id;
+        return { user };
+    }
+    async forgotPassword(email, { em, redis }) {
+        const user = await em.findOne(user_1.User, { email });
+        if (!user) {
+            return true;
+        }
+        const token = (0, uuid_1.v4)();
+        await redis.set(constants_1.FORGOT_PASSWORD_PREFIX + token, user.id, 'PX', 1000 * 60 * 60 * 24 * 3);
+        await (0, sendEmail_1.sendEmail)(email, `<a href="http://localhost:3000/change-password/${token}"> reset password</a>`);
         return true;
     }
     async me({ req, em }) {
@@ -130,6 +173,15 @@ let UserResolver = class UserResolver {
         }));
     }
 };
+__decorate([
+    (0, type_graphql_1.Mutation)(() => UserResponse),
+    __param(0, (0, type_graphql_1.Arg)('token')),
+    __param(1, (0, type_graphql_1.Arg)('newPassword')),
+    __param(2, (0, type_graphql_1.Ctx)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, Object]),
+    __metadata("design:returntype", Promise)
+], UserResolver.prototype, "changePassword", null);
 __decorate([
     (0, type_graphql_1.Mutation)(() => Boolean),
     __param(0, (0, type_graphql_1.Arg)('email')),

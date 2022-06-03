@@ -9,13 +9,16 @@ import { buildSchema } from "type-graphql";
 import { HelloResolver } from "./resolvers/hello";
 import { PostResolver } from "./resolvers/post";
 import { UserResolver } from "./resolvers/user";
-import {createClient} from "redis";
+// import {createClient} from "redis";
 import session from "express-session";
 import connectRedis from 'connect-redis';
 import { MyContext } from "./types";
 import cors from 'cors';
-import { sendEmail } from "./utils/sendEmail";
-import { User } from "./entities/user";
+// import { sendEmail } from "./utils/sendEmail";
+// import { User } from "./entities/user";
+import Redis from "ioredis";
+// import RedisClient from "@redis/client/dist/lib/client";
+
 
 const main = async () => {
     // sendEmail('raul@raul.com',"Yo")
@@ -27,8 +30,9 @@ const main = async () => {
     const app = express();
 
     const RedisStore = connectRedis(session);
-    const redisClient = createClient({ legacyMode: true });
-    redisClient.connect().catch(console.error)
+    // const redisClient = createClient({ legacyMode: true });
+    const redis = new Redis();
+    // redis.connect().catch(console.error);
 
     app.set("trust proxy", !__prod__)
     const corsOptions = {origin: ['http://localhost:3000','https://studio.apollographql.com'], credentials: true};
@@ -38,7 +42,7 @@ const main = async () => {
         session({
             name: COOKIE_NAME,
             store: new RedisStore({ 
-                client: redisClient as any,
+                client: redis as any,
                 disableTouch: true
             }),
             cookie: {
@@ -58,7 +62,7 @@ const main = async () => {
             resolvers: [HelloResolver, PostResolver, UserResolver],
             validate: false,
         }),
-        context: ({req,res}: MyContext): MyContext => ({em, req, res}),
+        context: ({req,res}: MyContext): MyContext => ({em, req, res, redis}),
     });
 
     await apolloServer.start();
